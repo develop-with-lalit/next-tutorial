@@ -1,46 +1,68 @@
-import fs from "fs/promises";
-import Link from "next/link";
-import path from "path";
+import { useRef, useState } from "react";
 
-function HomePage({ products }) {
-  return (
-    <ul>
-      {products.map((product) => {
-        return (
-          <li key={product.id}>
-            <Link href={`/products/${product.id}`}>{product.title}</Link>
-          </li>
-        );
-      })}
-    </ul>
-  );
-}
+function HomePage() {
+  const emailRef = useRef();
+  const feedbackRef = useRef();
 
-export async function getStaticProps() {
-  const filePath = path.join(process.cwd(), "data", "dummy-backend.json");
-  const jsonData = await fs.readFile(filePath);
-  const data = JSON.parse(jsonData);
+  const [feedbackItems, setFeedbackItems] = useState([]);
 
-  if (!data) {
-    return {
-      redirect: {
-        destination: "/about",
+  function loadFeedbackHandler() {
+    fetch("/api/feedback")
+      .then((response) => response.json())
+      .then((data) => {
+        setFeedbackItems(data.data);
+      });
+  }
+
+  function handleSumbit(e) {
+    e.preventDefault();
+    console.log(emailRef.current.value);
+    console.log(feedbackRef.current.value);
+
+    fetch("/api/feedback", {
+      method: "POST",
+      body: JSON.stringify({
+        email: emailRef.current.value,
+        text: feedbackRef.current.value,
+      }),
+      headers: {
+        "Content-Type": "application/json",
       },
-    };
+    })
+      .then((response) => response.json())
+      .then((responseData) => {
+        console.log(responseData);
+      })
+      .catch((err) => {
+        console.error(err);
+      });
   }
 
-  if (data.products.length === 0) {
-    return {
-      notFound: true,
-    };
-  }
-
-  return {
-    props: {
-      products: data.products,
-      //   revalidate: 100
-    },
-  };
+  return (
+    <>
+      <h1>Hello World</h1>
+      <form onSubmit={handleSumbit}>
+        <div>
+          <label htmlFor="email">Your Email Address</label>
+          <input type="email" id="email" ref={emailRef} />
+        </div>
+        <div>
+          <label htmlFor="feedback">Your Email Address</label>
+          <textarea id="feedback" rows="5" ref={feedbackRef} />
+        </div>
+        <div>
+          <button type="submit"> Submit </button>
+        </div>
+      </form>
+      <hr />
+      <button onClick={loadFeedbackHandler}>Load Feedbacks</button>
+      <ul>
+        {feedbackItems.map((item) => (
+          <li key={item.id}> {item.text} </li>
+        ))}
+      </ul>
+    </>
+  );
 }
 
 export default HomePage;
